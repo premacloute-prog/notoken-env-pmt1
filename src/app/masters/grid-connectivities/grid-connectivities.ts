@@ -1,0 +1,188 @@
+import { Component, inject } from '@angular/core';
+import { FormBuilder, Validators } from '@angular/forms';
+import { ConfirmationService, MenuItem, MessageService } from 'primeng/api';
+import { Apiservice } from 'src/app/service/apiservice';
+import { Shared } from 'src/app/shared/services/shared';
+
+@Component({
+  selector: 'app-grid-connectivities',
+  imports: [Shared],
+  templateUrl: './grid-connectivities.html',
+  styleUrl: './grid-connectivities.css',
+})
+export class GridConnectivities {
+  showConnectivityModal = false;
+
+  selectedGridConnectivity: any;
+
+  items: MenuItem[] = [];
+
+  private fb = inject(FormBuilder);
+
+  constructor(private confirmationService: ConfirmationService, 
+    private apiService: Apiservice, private messageService: MessageService){}
+
+  gridConnectivityForm = this.fb.group({
+    gridConnectivityId: [0],
+    gridConnectivity: ['', [Validators.required, Validators.maxLength(50)]],
+    status: [false]
+  })
+
+  get gridConnectivity(){
+    return this.gridConnectivityForm.get('gridConnectivity');
+  }
+
+  ngOnInit(): void {
+    this.items = this.getMenuItems();
+    this.fetchAllGridConnectivities();
+
+  }
+
+  fetchAllGridConnectivities(){
+    try {
+      this.apiService.fetchAllGridConnectivities('').subscribe({
+        next: val => {
+          this.gridConnectivityList = val.data;
+        },
+        error: err => {
+
+          if (err.status === 400) {
+            this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error.detail });
+          }
+        }
+      })
+    } catch (error) {
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Please Try Again' });
+    }
+  }
+
+  submitGridConnectivityForm(){
+    try {
+      if (this.gridConnectivityForm.valid) {
+        if (!this.selectedGridConnectivity) { 
+          const data = this.gridConnectivityForm.value;
+    
+          this.apiService.createGridConnectivity(data).subscribe({
+            next: val => {
+              this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Successfully Created Grid Connectivity' });
+              this.showConnectivityModal = false;
+              this.fetchAllGridConnectivities();
+            },
+            error: err => {
+    
+              if (err.status === 400) {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error.detail });
+              }
+            }
+          })
+        } else {
+          const data = this.gridConnectivityForm.value;
+
+          this.apiService.updateGridConnectivity(data).subscribe({
+            next: val => {
+              this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Successfully Updated Grid Connectivity' });
+              this.showConnectivityModal = false;
+              this.fetchAllGridConnectivities();
+            },
+            error: err => {
+    
+              if (err.status === 400) {
+                this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error.detail });
+              }
+            }
+          })
+        }     
+      } else {
+        this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Please fill All Required field' });
+      }
+    } catch (error) {
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Please Try Again' });
+    }
+  }
+
+  editGridConnectivity(){
+    try {
+      this.showConnectivityModal = true;
+      this.gridConnectivityForm.patchValue(this.selectedGridConnectivity);
+    } catch (error) {
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Please Try Again' });
+    }
+  }
+
+  gridConnectivityList = [
+    {
+      gridConnectivityName: 'STU'
+    },
+    {
+      gridConnectivityName: 'CTU'
+    }
+  ]
+
+  openGridConnectivityModal(){
+    try {
+      this.showConnectivityModal = true;
+    } catch (error) {
+      this.messageService.add({ severity: 'error', summary: 'Error', detail: 'Please Try Again' });
+    }
+  }
+
+  getMenuItems(){
+    return [
+      {
+        label: 'Edit',
+        icon: 'pi pi-pencil',
+        command: () => this.editGridConnectivity()
+      },
+      {
+        label: 'Delete',
+        icon: 'pi pi-trash',
+        command: () => this.deleteGridConnectivity()
+      }
+    ]
+  }
+
+  deleteGridConnectivity(){
+    this.confirmationService.confirm({
+      message: 'Do you want to delete this record?',
+      header: `Delete Grid Connectivities`,
+      icon: 'pi pi-info-circle',
+      rejectLabel: 'Cancel',
+      rejectButtonProps: {
+          label: 'Cancel',
+          severity: 'secondary',
+          outlined: true
+      },
+      acceptButtonProps: {
+          label: 'Delete',
+          severity: 'danger'
+      },
+      accept: () => {
+        const data = {
+          gridConnectivityId: this.selectedGridConnectivity.gridConnectivityId
+        }
+        this.apiService.deleteGridConnectivity(data).subscribe({
+          next: val => {
+            this.messageService.add({ severity: 'success', summary: 'Success', detail: 'Successfully Deleted Grid Connectivity' });
+            this.fetchAllGridConnectivities();
+          },
+          error: err => {
+
+            if (err.status === 400) {
+              this.messageService.add({ severity: 'error', summary: 'Error', detail: err.error.detail });
+            }
+          }
+        })
+      }
+    });
+  }
+
+  gridConnectivityMenu(event: Event, menu: any, gridConnectivity: any){
+    this.selectedGridConnectivity = gridConnectivity;
+    menu.toggle(event);
+  }
+
+  onDialogClose(){
+    this.selectedGridConnectivity = null;
+    this.gridConnectivityForm.reset();
+  }
+}
